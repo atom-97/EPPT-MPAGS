@@ -15,7 +15,7 @@ double GetMomentum(double& grad_pre, double& grad_post) {
   double angle = TMath::ATan(grad);
   // p_y = 0.3 B * z * l , where B[T], z[e], l[m] and p[GeV/c]; p = p_y/sin(angle)
   // here B = 0.5T, l ~= 2m and z = 1e
-  double p  =  0.3 * 2 / (2 * TMath::Sin(angle/2));
+  double p  =  0.3 / (2 * TMath::Sin(angle/2));
   return p; 
 }
 
@@ -26,16 +26,16 @@ double GetGradientOfDCHits(std::vector<double> &branchX, std::vector<double> &br
   double x[5] {0.0, 0.0, 0.0, 0.0, 0.0};
   double z[5] {0.0, 0.0, 0.0, 0.0, 0.0};
 
-  /*old
+  
   for (Int_t j{0}; j < 5; j++) {
-    x[j] = (*branchX)[j] + rand->Gaus(0.0, 0.1);
-    z[j] = (*branchZ)[j]*0.5 + 2.75;
+    x[j] = branchX[j] + rand.Gaus(0.0, 0.1);
+    z[j] = branchZ[j]*0.5 + 2.75;
     std::cout << "Values for the point: " << x[j] << " and " << z[j] << std::endl;
     if (x[j] == 0.0 || z[j] == 0.0) std::cout << "WARNING: zero in coordinates" << std::endl;
-    }*/
-  
-  ///////////////////////////////////////
-  // New DC hit selection procedure
+  }
+  /*
+  ////////////////////////////////////////////
+  // New DC hit selection procedure - method 1
   
   int old_z{-1};  //keep track of the previous z, controls indexing of kept values
   double old_x{0};   //kepp track of last saved x values
@@ -72,7 +72,7 @@ double GetGradientOfDCHits(std::vector<double> &branchX, std::vector<double> &br
     //move over to the next entry
     counter += 1;
   }
-
+  */
   //fitting and extracting the gradient
   TGraphErrors* tge = new TGraphErrors(5, z, x, zerrors, xerrors);
   tge->Fit("pol1");
@@ -80,8 +80,8 @@ double GetGradientOfDCHits(std::vector<double> &branchX, std::vector<double> &br
 
 }
 
-//////////////////////////////////////
-// Track fitting and chi2 evaluation
+///////////////////////////////////////////////
+// Track fitting and chi2 evaluation - Method 2
 
 double GetGradientOfDCHitsCombo(std::vector<double> &branchX, std::vector<double> &branchZ, TRandom &rand) {
   //assign hits in each DC plane to vectors
@@ -157,7 +157,7 @@ bool MatchTrackToHodCol(TF1 &fit, int& colNo){
 
 void Exercise1_momentum() {
   
-  TFile* b5 = new TFile("./B5_1000mus_100GeV_1T_0deg.root", "read");
+  TFile* b5 = new TFile("./B5_THIN_PbPlate_after_1000mus_100GeV_05T_0deg.root", "read");
   TTree* t = (TTree*) b5->Get("B5");
   std::vector<double> *HitXpre = new std::vector<double>;
   std::vector<double> *HitZpre = new std::vector<double>;
@@ -170,9 +170,9 @@ void Exercise1_momentum() {
  
   TRandom* rand = new TRandom();
 
-  TH1F* histo = new TH1F("Momentum distribution for B=1.0T", "Momentum distribution B=1.0T", 80, 80.5, 120.5); 
+  TH1F* histo = new TH1F("THIN PbPlate after B=0.5T", "Momentum distribution B=0.5T with THIN PbPLate", 50, 0.5, 150.5); 
   histo->GetXaxis()->SetTitle("Momentum [GeV]");
-  histo->GetYaxis()->SetTitle("Count per 0.5 GeV bin"); 
+  histo->GetYaxis()->SetTitle("Count per 3.0 GeV bin"); 
 
   int unsucessfull_hit_associations{0};
   int nonzero_DC1_gradient{0};
@@ -180,8 +180,8 @@ void Exercise1_momentum() {
   Long64_t Entries = t->GetEntries();
   for (Long64_t i{0}; i < Entries; i++) {
     t->GetEntry(i);
-    double grad_pre = GetGradientOfDCHitsCombo(*HitXpre, *HitZpre, *rand);
-    double grad_post = GetGradientOfDCHitsCombo(*HitX, *HitZ, *rand);    
+    double grad_pre = GetGradientOfDCHits(*HitXpre, *HitZpre, *rand);
+    double grad_post = GetGradientOfDCHits(*HitX, *HitZ, *rand);    
     if (grad_post == 0.0) {
       unsucessfull_hit_associations += 1;
       continue;
@@ -195,7 +195,7 @@ void Exercise1_momentum() {
     histo->Fill(p);
   }
 
-  TFile* out = new TFile("Momentum_distribution_1T_0deg_Tracks_2grads.root", "update");
+  TFile* out = new TFile("Momentum_distribution_THIN_PbPlate_after_05T_0deg_2grads.root", "update");
   histo->Write();
   out->Close();
   delete histo;
